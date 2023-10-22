@@ -1,4 +1,5 @@
 import aiohttp
+import aiofiles
 import asyncio
 import logging
 import names
@@ -73,6 +74,13 @@ async def handle_exchange_command(ws: WebSocketServerProtocol, args: str):
         await ws.send("Invalid argument. Please provide a positive number of days for exchange history.")
 
 
+async def save_log(log_message):
+    timestamp = str(datetime.now())
+    log_line = f"{timestamp}: {log_message}"
+    async with aiofiles.open("exchange_history.log", 'a') as log_file:
+        await log_file.write(log_line + '\n')
+
+
 class Server:
     clients = set()
 
@@ -105,13 +113,17 @@ class Server:
                 if len(command_parts) > 1:
                     command, args = command_parts[0], command_parts[1]
                     if command == 'exchange':
+                        await save_log(f"{ws.name}: {message}")
                         await handle_exchange_command(ws, args)
+
                     else:
                         await self.send_to_clients(f"{ws.name}: {message}")
                 else:
                     await self.send_to_clients(f"{ws.name}: {message}")
             else:
+                await save_log(f"{ws.name}: {message}")
                 await self.send_to_clients(f"{ws.name}: {message}")
+
 
 async def main():
     server = Server()
